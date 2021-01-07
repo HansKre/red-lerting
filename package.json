@@ -1,0 +1,18 @@
+{
+    "name": "red-lerting-node",
+    "version": "0.0.1",
+    "description": "Node-Red-Style VSE Monitoring and Alerting",
+    "keywords": [
+        "_node-red"
+    ],
+    "node-red": {
+        "nodes": {
+            "red-lerting": "src/red-lerting.js"
+        }
+    },
+    "dependencies": {
+        "got": "^11.8.1",
+        "jsonata": "^1.8.4",
+        "tunnel": "^0.0.6"
+    }
+}

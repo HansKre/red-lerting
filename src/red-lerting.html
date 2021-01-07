@@ -1,0 +1,33 @@
+<script type="text/javascript">
+    RED.nodes.registerType('red-lerting', {
+        category: 'VSDH_Nodes',
+        color: '#a6bbcf',
+        defaults: {
+            name: { value: "RED-LERTING" },
+            url: { value: "https://...", required: true }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "white-globe.png",
+        label: function () {
+            return this.name || "give-me-a-name";
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="red-lerting">
+    <div class="form-row">
+        <!-- Node-Red-Ui for name Property -->
+        <!-- <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name"> -->
+        <!-- Node-Red-Ui for url Property -->
+        <!-- <label for="node-input-url"><i class="fa fa-tag"></i> Url</label>
+        <input type="text" id="node-input-url" placeholder="Some Url"> -->
+        <p>Nothing to configure</p>
+    </div>
+</script>
+
+<!-- Helper Text displayed on mouse-over -->
+<script type="text/html" data-help-name="red-lerting">
+    <p>Lorem ipsum</p>
+</script>
