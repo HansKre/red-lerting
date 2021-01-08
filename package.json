@@ -7,7 +7,7 @@
     ],
     "node-red": {
         "nodes": {
-            "red-lerting": "src/red-lerting.js"
+            "red-lerting-core": "src/red-lerting-core.js"
         }
     },
     "dependencies": {

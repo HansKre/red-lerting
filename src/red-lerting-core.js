@@ -13,7 +13,7 @@ module.exports = function (RED) {
      * Constructor
      * @param {*} config 
      */
-    function RedLertingNode(config) {
+    function RedLertingCoreNode(config) {
         RED.nodes.createNode(this, config);
 
         /**
@@ -63,7 +63,7 @@ module.exports = function (RED) {
         });
     }
 
-    RED.nodes.registerType("red-lerting", RedLertingNode);
+    RED.nodes.registerType("red-lerting-core", RedLertingCoreNode);
 }
 
 const stopTimers = (node) => {
