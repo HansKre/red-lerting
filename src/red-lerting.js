@@ -190,6 +190,7 @@ function checkAlert(response, request, succb, res) {
                     console.log(alertReasons);
                     return true;
                 } else {
+                    // early exit on first not matching condition
                     alertReasons.length = 0;
                     return false;
                 }
@@ -209,7 +210,13 @@ function checkAlert(response, request, succb, res) {
 }
 
 function evaluate(currentVal, comp, compVal) {
-    const expressionStr = `${currentVal} ${comp} ${compVal}`;
+    let expressionStr;
+    if ((typeof (currentVal) === 'string') && (typeof (compVal) === 'string')) {
+        // needs to be: evaluate(`"UP" != "UP"`);
+        expressionStr = `"${currentVal}" ${comp} "${compVal}"`;
+    } else {
+        expressionStr = `${currentVal} ${comp} ${compVal}`;
+    }
     console.log(expressionStr);
     const expression = jsonata(expressionStr);
     const result = expression.evaluate();
