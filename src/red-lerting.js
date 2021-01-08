@@ -33,8 +33,10 @@ module.exports = function (RED) {
                     done();
                 }
 
-                onError = (err) => {
-                    this.warn(err);
+                onError = (err, msg) => {
+                    // error properties: 'code', 'token', 'position', 'stack', 'message'
+                    this.warn(err)
+                    msg && this.warn(msg);
                     done(err);
                 }
 
@@ -84,40 +86,33 @@ const httpClient = (reqHeaders) => {
         // https: {
         //     rejectUnauthorized: false
         // },
-        timeout: 5000
+        timeout: 20000
     });
     return client;
 }
 
-const handleAlerts = () => {
-    /**
-     *  TODO:
-     *      * implement comperators: lt, gt, eq, ne
-     *      * handle case where alert-property is not a select-property
-     *      * implement alertOr
-     *      * implement alertAnd
-     *      * take decision: allow alerts even if select is undefined? (example: mvis-count)
-     *      * https://docs.jsonata.org/comparison-operators
-     * */
+const fireAlert = (reason, succb) => {
+    succb({ "alert": true, "reason": reason });
 }
 
 const handleResponse = (request, response, succb, errcb) => {
 
-    if (request.select) {
+    if (request.selects) {
         const jsonData = JSON.parse(response.body).responses[0];
         if (jsonData) {
             const res = {};
-            Object.entries(request.select).forEach(([property, expr]) => {
+            Object.entries(request.selects).forEach(([property, expr]) => {
                 const expression = jsonata(expr);
                 const result = expression.evaluate(jsonData);
                 res[property] = result;
             });
-
+            checkAlert(response, request, succb, res);
             succb(res);
         } else {
             errcb("jsonData undefined");
         }
     } else {
+        checkAlert(response, request, succb);
         succb(response.body)
     }
 
@@ -135,12 +130,12 @@ const httpReq = (request, succb, errcb, token) => {
         console.log('POSTing request to', request.url);
         client.post(request.url, { body: request.body })
             .then(response => handleResponse(request, response, succb, errcb))
-            .catch(error => errcb(error));
+            .catch(error => errcb(error, `happend at request: ${request.description}`));
     } else {
         console.log('GETing request from', request.url);
         client.get(request.url)
             .then(response => handleResponse(request, response, succb, errcb))
-            .catch(error => errcb(error));
+            .catch(error => errcb(error, `happend at request: ${request.description}`));
     }
 }
 
@@ -170,3 +165,60 @@ const handleRequest = (request, succb, errcb) => {
         httpReq(request, succb, errcb);
     }
 }
+
+function checkAlert(response, request, succb, res) {
+    if (request.alert) {
+        evaluateAndFire(response.body, request.alert.comp, request.alert.value, request.description, 'response.body', succb);
+    }
+
+    if (request.alertOr && request.alertOr !== "" && res) {
+        Object.entries(request.alertOr).forEach(([property, { comp, value: compVal }]) => {
+            if (res.hasOwnProperty(property))
+                evaluateAndFire(res[property], comp, compVal, request.description, property, succb);
+        });
+    }
+
+    if (request.alertAnd && request.alertAnd !== "" && res) {
+        const alertReasons = [];
+        Object.entries(request.alertAnd).every(([property, { comp, value: compVal }]) => {
+            console.log("property:", property);
+            if (res.hasOwnProperty(property)) {
+                const { result, expressionStr } = evaluate(res[property], comp, compVal);
+                console.log("result", result);
+                if (result) {
+                    alertReasons.push({ "property": property, "expressionStr": expressionStr });
+                    console.log(alertReasons);
+                    return true;
+                } else {
+                    alertReasons.length = 0;
+                    return false;
+                }
+            } else {
+                // abort alerting check if alerting-property is missing in selected properties in result
+                alertReasons.length = 0;
+                return false;
+            }
+        });
+        if (alertReasons.length != 0) {
+            const alertReasonsStr = alertReasons.map(({ property, expressionStr }) => {
+                return property + ' ' + expressionStr;
+            })
+            fireAlert(`${request.description} alerts because: ${alertReasonsStr.join(' and ')}`, succb);
+        }
+    }
+}
+
+function evaluate(currentVal, comp, compVal) {
+    const expressionStr = `${currentVal} ${comp} ${compVal}`;
+    console.log(expressionStr);
+    const expression = jsonata(expressionStr);
+    const result = expression.evaluate();
+    return { result, expressionStr };
+}
+
+function evaluateAndFire(currentVal, comp, compVal, description, property, succb) {
+    const { result, expressionStr } = evaluate(currentVal, comp, compVal, description, property, succb);
+    if (result)
+        fireAlert(`${description} alerts because ${property} is ${expressionStr}`, succb);
+}
+
