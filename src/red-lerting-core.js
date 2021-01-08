@@ -6,6 +6,7 @@ const jsonata = require("jsonata");
 const MS_PER_MINUTE = 60000;
 let timers = [];
 let isRunning = false;
+const cookieJar = new Map();
 
 module.exports = function (RED) {
 
@@ -118,7 +119,17 @@ const handleResponse = (request, response, succb, errcb) => {
 
 }
 
+const domainFrom = (url) => {
+    const domainRegex = /^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:\/\n?]+)/img;
+    return url.match(domainRegex)[0];
+}
+
 const httpReq = (request, succb, errcb, token) => {
+
+    function handleError(errcb, error, request) {
+        cookieJar.delete(domainFrom(request.url)); // force fresh login on next try
+        return errcb(error, `happend at request: ${request.description}`);
+    }
 
     const headers = request.headers;
     if (token) {
@@ -130,31 +141,39 @@ const httpReq = (request, succb, errcb, token) => {
         console.log('POSTing request to', request.url);
         client.post(request.url, { body: request.body })
             .then(response => handleResponse(request, response, succb, errcb))
-            .catch(error => errcb(error, `happend at request: ${request.description}`));
+            .catch(error => handleError(errcb, error, request));
     } else {
         console.log('GETing request from', request.url);
         client.get(request.url)
             .then(response => handleResponse(request, response, succb, errcb))
-            .catch(error => errcb(error, `happend at request: ${request.description}`));
+            .catch(error => handleError(errcb, error, request));
     }
 }
 
 const httpLogin = (request, succb, errcb) => {
 
-    const client = httpClient(request.loginHeaders);
-    const loginCreds = {
-        "username": request.username,
-        "password": request.password
-    };
+    const domain = domainFrom(request.loginUrl);
+    if (cookieJar.has(domain)) {
+        console.log("getting cookie from cookieJar");
+        const loginToken = cookieJar.get(domain);
+        succb(loginToken);
+    } else {
+        const client = httpClient(request.loginHeaders);
+        const loginCreds = {
+            "username": request.username,
+            "password": request.password
+        };
 
-    console.log('POSTing login to', request.loginUrl);
-    client.post(request.loginUrl, { body: JSON.stringify(loginCreds) })
-        .then(response => {
-            const setCookie = response.headers['set-cookie'][0];
-            const loginToken = setCookie.split(';')[0];
-            succb(loginToken);
-        })
-        .catch(error => errcb(error));
+        console.log('POSTing login to', request.loginUrl);
+        client.post(request.loginUrl, { body: JSON.stringify(loginCreds) })
+            .then(response => {
+                const setCookie = response.headers['set-cookie'][0];
+                const loginToken = setCookie.split(';')[0];
+                cookieJar.set(domain, loginToken);
+                succb(loginToken);
+            })
+            .catch(error => errcb(error));
+    }
 }
 
 const handleRequest = (request, succb, errcb) => {
