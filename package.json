@@ -1,7 +1,7 @@
 {
     "name": "red-lerting-node",
     "version": "0.0.1",
-    "description": "Node-Red-Style VSE Monitoring and Alerting",
+    "description": "Node-Red-Style Custom Monitoring and Alerting Node",
     "keywords": [
         "_node-red"
     ],

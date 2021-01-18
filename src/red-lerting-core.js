@@ -73,7 +73,7 @@ const stopTimers = (node) => {
 }
 
 const httpClient = (reqHeaders) => {
-    const proxy = process.env.https_proxy || 'https://53.18.191.200:3128';
+    const proxy = process.env.https_proxy;
     const client = got.extend({
         headers: reqHeaders,
         agent: {
